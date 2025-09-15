@@ -45,7 +45,7 @@
                     <th>Rencana Kembali</th>
                     <th>Tgl Kembali</th>
                     <th>Status</th>
-                    <th>Aksi</th>
+                    <th>Opsi</th>
                 </tr>
             </thead>
             <tbody>
@@ -84,28 +84,44 @@
                             </td>
 
                             <!-- Aksi -->
-                            <td>
-                                <a href="<?= site_url('peminjaman/show/' . $item['id']) ?>" class="btn btn-info btn-sm">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="<?= site_url('peminjaman/edit/' . $item['id']) ?>" class="btn btn-warning btn-sm">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <a href="<?= site_url('peminjaman/delete/' . $item['id']) ?>"
-                                    class="btn btn-danger btn-sm"
-                                    onclick="return confirm('Yakin hapus data ini?')">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                            <!-- Aksi -->
+                            <td class="d-flex gap-1 align-items-center">
+                                <!-- Dropdown Aksi -->
+                                <div class="dropdown">
+                                    <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Opsi
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="<?= site_url('peminjaman/show/' . $item['id']) ?>">
+                                                <i class="bi bi-eye"></i> Lihat
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="<?= site_url('peminjaman/edit/' . $item['id']) ?>">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="<?= site_url('peminjaman/delete/' . $item['id']) ?>"
+                                                onclick="return confirm('Yakin hapus data ini?')">
+                                                <i class="bi bi-trash"></i> Hapus
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
 
-                                <!-- Tombol Kembalikan hanya jika belum dikembalikan -->
+                                <!-- Tombol Kembalikan di luar dropdown -->
                                 <?php if ($status == 'Dipinjam' || $status == 'Terlambat'): ?>
                                     <a href="<?= site_url('peminjaman/kembalikan/' . $item['id']) ?>"
                                         class="btn btn-success btn-sm"
-                                        onclick="return confirm('Tandai sebagai sudah dikembalikan?')">
+                                        onclick="return confirm('Tandai sebagai sudah dikembalikan?')"
+                                        title="Konfirmasi pengembalian">
                                         <i class="bi bi-check"></i>
                                     </a>
                                 <?php endif; ?>
                             </td>
+
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>

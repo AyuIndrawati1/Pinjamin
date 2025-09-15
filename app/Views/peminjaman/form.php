@@ -24,10 +24,19 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama Peminjam Laptop *</label>
-                            <input type="text" name="nama_peminjam" class="form-control"
-                                placeholder="Masukkan nama peminjam"
-                                value="<?= esc($item['nama_peminjam'] ?? '') ?>" required>
+                            <select name="nama_peminjam" class="form-select" required>
+                                <option value="">Pilih nama peminjam</option>
+                                <?php if (!empty($pegawaiList)): ?>
+                                    <?php foreach ($pegawaiList as $pegawai): ?>
+                                        <option value="<?= esc($pegawai['nama']) ?>"
+                                            <?= (isset($item) && $item['nama_peminjam'] == $pegawai['nama']) ? 'selected' : '' ?>>
+                                            <?= esc($pegawai['nama']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
                         </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Merk Laptop yang Dipinjam *</label>
                             <select name="merk_laptop" class="form-select" required>
@@ -82,7 +91,7 @@
                     </div>
 
                     <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary"><b>+</b> Tambah Peminjaman</button>
+                        <button type="submit" class="btn btn-primary"><b>+</b> <?= isset($item) ? 'Update' : 'Tambah' ?> Peminjaman</button>
                         <button type="reset" class="btn btn-secondary">Reset Form</button>
                         <a href="<?= site_url('peminjaman') ?>" class="btn btn-danger">Batal</a>
                     </div>

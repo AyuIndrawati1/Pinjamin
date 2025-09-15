@@ -19,6 +19,18 @@
                 </div>
             </div>
 
+            <!-- Stok Perangkat
+            <div class="col-md-4">
+                <div class="card shadow border-0 bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Stok Perangkat</h5>
+                        <h3 class="fw-bold"><?= $dipinjam ?></h3>
+                        <p>Laptop</p>
+                    </div>
+                </div>
+            </div> -->
+
+
             <!-- Card Dikembalikan -->
             <div class="col-md-4">
                 <div class="card shadow border-0 bg-success text-white">

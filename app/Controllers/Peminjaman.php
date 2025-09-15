@@ -3,11 +3,11 @@
 namespace App\Controllers;
 
 use App\Models\PeminjamanModel;
+use App\Models\PegawaiModel;
 use CodeIgniter\Controller;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Dompdf\Dompdf;
-use Dompdf\Options;
 
 class Peminjaman extends Controller
 {
@@ -18,7 +18,6 @@ class Peminjaman extends Controller
         $this->peminjamanModel = new PeminjamanModel();
     }
 
-    // Menampilkan daftar peminjaman
     public function index()
     {
         $items = $this->peminjamanModel->findAll();
@@ -36,13 +35,14 @@ class Peminjaman extends Controller
         return view('peminjaman/index', ['items' => $items]);
     }
 
-    // Form tambah data
     public function create()
     {
-        return view('peminjaman/form');
+        $pegawaiModel = new PegawaiModel();
+        $pegawaiList = $pegawaiModel->findAll();
+
+        return view('peminjaman/form', ['pegawaiList' => $pegawaiList]);
     }
 
-    // Simpan data baru
     public function store()
     {
         $this->peminjamanModel->insert([
@@ -60,7 +60,6 @@ class Peminjaman extends Controller
         return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil ditambahkan!');
     }
 
-    // Detail
     public function show($id)
     {
         $peminjaman = $this->peminjamanModel->find($id);
@@ -72,7 +71,6 @@ class Peminjaman extends Controller
         return view('peminjaman/show', ['peminjaman' => $peminjaman]);
     }
 
-    // Form edit
     public function edit($id)
     {
         $peminjaman = $this->peminjamanModel->find($id);
@@ -81,10 +79,15 @@ class Peminjaman extends Controller
             throw new \CodeIgniter\Exceptions\PageNotFoundException("Data peminjaman dengan ID $id tidak ditemukan");
         }
 
-        return view('peminjaman/form', ['item' => $peminjaman]);
+        $pegawaiModel = new PegawaiModel();
+        $pegawaiList = $pegawaiModel->findAll();
+
+        return view('peminjaman/form', [
+            'item' => $peminjaman,
+            'pegawaiList' => $pegawaiList
+        ]);
     }
 
-    // Update data
     public function update($id)
     {
         $this->peminjamanModel->update($id, [
@@ -102,14 +105,12 @@ class Peminjaman extends Controller
         return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil diperbarui!');
     }
 
-    // Hapus data
     public function delete($id)
     {
         $this->peminjamanModel->delete($id);
         return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil dihapus!');
     }
 
-    // Kembalikan laptop
     public function kembalikan($id)
     {
         $row = $this->peminjamanModel->find($id);
@@ -130,7 +131,6 @@ class Peminjaman extends Controller
         return redirect()->to(site_url('peminjaman'));
     }
 
-    // Helper convert tanggal dari dd/mm/yyyy → yyyy-mm-dd
     private function convertDate($date)
     {
         if (!$date) return null;
@@ -141,7 +141,6 @@ class Peminjaman extends Controller
         return $date;
     }
 
-    // Tampilkan riwayat
     public function riwayat()
     {
         $data['riwayat'] = $this->peminjamanModel
@@ -151,7 +150,6 @@ class Peminjaman extends Controller
         return view('riwayat/index', $data);
     }
 
-    // ✅ Export riwayat peminjaman ke Excel (XLSX)
     public function exportExcel()
     {
         $peminjaman = $this->peminjamanModel->orderBy('tgl_pinjam', 'DESC')->findAll();
@@ -160,7 +158,6 @@ class Peminjaman extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Riwayat Peminjaman');
 
-        // Header
         $headers = ['ID', 'Nama Peminjam', 'Merk Laptop', 'Tanggal Pinjam', 'Tanggal Kembali', 'Petugas Pinjam', 'Petugas Kembali', 'Keperluan', 'Status'];
         $col = 'A';
         foreach ($headers as $header) {
@@ -169,7 +166,6 @@ class Peminjaman extends Controller
             $col++;
         }
 
-        // Data
         $rowNumber = 2;
         foreach ($peminjaman as $row) {
             $sheet->setCellValue('A' . $rowNumber, $row['id']);
@@ -184,12 +180,10 @@ class Peminjaman extends Controller
             $rowNumber++;
         }
 
-        // Auto size kolom
         foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Download file
         $fileName = 'riwayat_peminjaman.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment; filename="' . $fileName . '"');
@@ -200,27 +194,6 @@ class Peminjaman extends Controller
         exit();
     }
 
-    // Export detail peminjaman ke PDF
-    // public function show_pdf($id)
-    // {
-    //     $peminjaman = $this->peminjamanModel->find($id);
-    //     if (!$peminjaman) {
-    //         throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
-    //     }
-
-    //     // render view ke HTML string
-    //     $html = view('peminjaman/show_pdf', ['peminjaman' => $peminjaman]);
-
-    //     // load ke dompdf
-    //     $dompdf = new \Dompdf\Dompdf();
-    //     $dompdf->loadHtml($html);
-    //     $dompdf->setPaper('A4', 'portrait');
-    //     $dompdf->render();
-
-    //     // download
-    //     $dompdf->stream("detail_peminjaman.pdf", ["Attachment" => true]);
-    // }
-    // search
     public function search()
     {
         $keyword = $this->request->getGet('keyword');
@@ -239,6 +212,7 @@ class Peminjaman extends Controller
             'keyword' => $keyword
         ]);
     }
+
     public function cetak($id)
     {
         $peminjaman = $this->peminjamanModel->find($id);
@@ -247,7 +221,6 @@ class Peminjaman extends Controller
             throw new \CodeIgniter\Exceptions\PageNotFoundException("Data tidak ditemukan");
         }
 
-        // ambil logo dari public/img/logo.png → ubah ke base64
         $path = FCPATH . 'img/logo.png';
         $logo = 'data:image/png;base64,' . base64_encode(file_get_contents($path));
 
