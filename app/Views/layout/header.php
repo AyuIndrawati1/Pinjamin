@@ -109,6 +109,20 @@
                         <i class="bi bi-plus-circle"></i> Tambah Data
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= service('uri')->getSegment(1) == 'laptop' ? 'active' : '' ?>" href="<?= site_url('laptop') ?>">
+                        <i class="bi bi-laptop"></i> Daftar Laptop
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= service('uri')->getSegment(1) == 'pegawai' ? 'active' : '' ?>" href="<?= site_url('pegawai') ?>">
+                        <i class="bi bi-people"></i> Daftar Pegawai
+                    </a>
+                </li>
+            </ul>
+
+
+            </li>
             </ul>
         </nav>
 

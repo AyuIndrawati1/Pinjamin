@@ -40,7 +40,7 @@
             <thead class="table-light">
                 <tr>
                     <th>Nama Peminjam</th>
-                    <th>Merk Laptop</th>
+                    <th>Nama Laptop</th>
                     <th>Tgl Pinjam</th>
                     <th>Rencana Kembali</th>
                     <th>Tgl Kembali</th>
@@ -53,7 +53,12 @@
                     <?php foreach ($items as $item): ?>
                         <tr>
                             <td><?= esc($item['nama_peminjam']) ?></td>
-                            <td><?= esc($item['merk_laptop']) ?></td>
+                            <td>
+                                <?= esc($item['nama_laptop']) ?>
+                                <?php if (!empty($item['seri'])): ?>
+                                    (<?= esc($item['seri']) ?>)
+                                <?php endif; ?>
+                            </td>
 
                             <!-- Format tanggal -->
                             <td>
@@ -73,20 +78,29 @@
                             <td>
                                 <?php
                                 $status = 'Dipinjam';
+
                                 if (!empty($item['tgl_kembali']) && $item['tgl_kembali'] != '0000-00-00') {
-                                    $status = 'Dikembalikan';
+                                    if (strtotime($item['tgl_kembali']) > strtotime($item['rencana_kembali'])) {
+                                        $status = 'Dikembalikan Terlambat';
+                                    } else {
+                                        $status = 'Dikembalikan';
+                                    }
                                 } elseif (!empty($item['rencana_kembali']) && strtotime(date('Y-m-d')) > strtotime($item['rencana_kembali'])) {
                                     $status = 'Terlambat';
                                 }
-                                $badgeClass = $status == 'Dipinjam' ? 'bg-primary' : ($status == 'Terlambat' ? 'bg-danger' : 'bg-success');
+
+                                $badgeClass = match ($status) {
+                                    'Dipinjam' => 'bg-primary',
+                                    'Terlambat' => 'bg-danger',
+                                    'Dikembalikan Terlambat' => 'bg-warning',
+                                    default => 'bg-success'
+                                };
                                 ?>
                                 <span class="badge <?= $badgeClass ?>"><?= $status ?></span>
                             </td>
 
                             <!-- Aksi -->
-                            <!-- Aksi -->
                             <td class="d-flex gap-1 align-items-center">
-                                <!-- Dropdown Aksi -->
                                 <div class="dropdown">
                                     <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         Opsi
@@ -111,7 +125,6 @@
                                     </ul>
                                 </div>
 
-                                <!-- Tombol Kembalikan di luar dropdown -->
                                 <?php if ($status == 'Dipinjam' || $status == 'Terlambat'): ?>
                                     <a href="<?= site_url('peminjaman/kembalikan/' . $item['id']) ?>"
                                         class="btn btn-success btn-sm"
@@ -121,7 +134,6 @@
                                     </a>
                                 <?php endif; ?>
                             </td>
-
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -135,3 +147,50 @@
 </div>
 
 <?= $this->include('layout/footer') ?>
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<?php
+$notifications = [];
+
+foreach ($items as $item) {
+    if ($item['rencana_kembali'] == date('Y-m-d') && empty($item['tgl_kembali'])) {
+        $notifications[] = [
+            'icon' => 'warning',
+            'title' => '⚠️ Pengingat untuk ' . esc($item['nama_peminjam']),
+            'text'  => 'Laptop "' . esc($item['merk_laptop']) . (!empty($item['seri']) ? ' ' . esc($item['seri']) : '') . '" harus dikembalikan hari ini.'
+        ];
+    } elseif (!empty($item['rencana_kembali']) && strtotime(date('Y-m-d')) > strtotime($item['rencana_kembali']) && empty($item['tgl_kembali'])) {
+        $notifications[] = [
+            'icon' => 'error',
+            'title' => '⏰ Terlambat! ' . esc($item['nama_peminjam']),
+            'text'  => 'Laptop "' . esc($item['merk_laptop']) . (!empty($item['seri']) ? ' ' . esc($item['seri']) : '') . '" belum dikembalikan dan sudah lewat batas waktu!'
+        ];
+    }
+}
+?>
+
+<script>
+    const notifications = <?= json_encode($notifications) ?>;
+
+    async function showNotifications(notifications) {
+        for (const notif of notifications) {
+            await Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: notif.icon,
+                title: notif.title,
+                text: notif.text,
+                showCloseButton: true,
+                showConfirmButton: true,
+                confirmButtonText: 'Oke',
+                timer: undefined,
+            });
+        }
+    }
+
+    if (notifications.length > 0) {
+        showNotifications(notifications);
+    }
+</script>

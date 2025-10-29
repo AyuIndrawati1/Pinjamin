@@ -4,32 +4,28 @@ namespace App\Controllers;
 
 use App\Models\PeminjamanModel;
 use App\Models\PegawaiModel;
-use CodeIgniter\Controller;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Dompdf\Dompdf;
+use App\Models\LaptopModel;
 
-class Peminjaman extends Controller
+class Peminjaman extends BaseController
 {
     protected $peminjamanModel;
+    protected $pegawaiModel;
+    protected $laptopModel;
 
     public function __construct()
     {
         $this->peminjamanModel = new PeminjamanModel();
+        $this->pegawaiModel    = new PegawaiModel();
+        $this->laptopModel     = new LaptopModel();
     }
 
     public function index()
     {
-        $items = $this->peminjamanModel->findAll();
+        $items = $this->peminjamanModel->getAll();
 
         foreach ($items as &$item) {
-            if ($item['status'] == 'Dipinjam') {
-                $today = date('Y-m-d');
-                if ($today > $item['rencana_kembali']) {
-                    $item['status'] = 'Terlambat';
-                    $this->peminjamanModel->update($item['id'], ['status' => 'Terlambat']);
-                }
-            }
+            $item['status'] = $this->peminjamanModel->normalizeStatus($item);
+            $this->peminjamanModel->update($item['id'], ['status' => $item['status']]);
         }
 
         return view('peminjaman/index', ['items' => $items]);
@@ -37,17 +33,17 @@ class Peminjaman extends Controller
 
     public function create()
     {
-        $pegawaiModel = new PegawaiModel();
-        $pegawaiList = $pegawaiModel->findAll();
+        $pegawaiList = $this->pegawaiModel->orderBy('nama', 'ASC')->findAll();
+        $laptopList  = $this->laptopModel->findAll(); // Untuk select list, tapi tetap simpan merk_laptop
 
-        return view('peminjaman/form', ['pegawaiList' => $pegawaiList]);
+        return view('peminjaman/form', compact('pegawaiList', 'laptopList'));
     }
 
     public function store()
     {
-        $this->peminjamanModel->insert([
+        $data = [
             'nama_peminjam'   => $this->request->getPost('nama_peminjam'),
-            'merk_laptop'     => $this->request->getPost('merk_laptop'),
+            'merk_laptop'     => $this->request->getPost('merk_laptop'), // pakai merk_laptop
             'tgl_pinjam'      => $this->convertDate($this->request->getPost('tgl_pinjam')),
             'rencana_kembali' => $this->convertDate($this->request->getPost('rencana_kembali')),
             'petugas_pinjam'  => $this->request->getPost('petugas_pinjam'),
@@ -55,67 +51,53 @@ class Peminjaman extends Controller
             'keperluan'       => $this->request->getPost('keperluan'),
             'tgl_kembali'     => $this->convertDate($this->request->getPost('tgl_kembali')),
             'status'          => 'Dipinjam'
-        ]);
+        ];
 
-        return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil ditambahkan!');
-    }
-
-    public function show($id)
-    {
-        $peminjaman = $this->peminjamanModel->find($id);
-
-        if (!$peminjaman) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data peminjaman dengan ID $id tidak ditemukan.");
-        }
-
-        return view('peminjaman/show', ['peminjaman' => $peminjaman]);
+        $this->peminjamanModel->insert($data);
+        return redirect()->to('/peminjaman')->with('success', 'Data peminjaman berhasil disimpan.');
     }
 
     public function edit($id)
     {
         $peminjaman = $this->peminjamanModel->find($id);
-
         if (!$peminjaman) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data peminjaman dengan ID $id tidak ditemukan");
+            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data tidak ditemukan");
         }
 
-        $pegawaiModel = new PegawaiModel();
-        $pegawaiList = $pegawaiModel->findAll();
+        $pegawaiList = $this->pegawaiModel->findAll();
+        $laptopList  = $this->laptopModel->findAll(); // Untuk select list merk_laptop
 
-        return view('peminjaman/form', [
-            'item' => $peminjaman,
-            'pegawaiList' => $pegawaiList
-        ]);
+        return view('peminjaman/form', compact('peminjaman', 'pegawaiList', 'laptopList'));
     }
 
     public function update($id)
     {
-        $this->peminjamanModel->update($id, [
+        $data = [
             'nama_peminjam'   => $this->request->getPost('nama_peminjam'),
-            'merk_laptop'     => $this->request->getPost('merk_laptop'),
+            'merk_laptop'     => $this->request->getPost('merk_laptop'), // pakai merk_laptop
             'tgl_pinjam'      => $this->convertDate($this->request->getPost('tgl_pinjam')),
             'rencana_kembali' => $this->convertDate($this->request->getPost('rencana_kembali')),
             'petugas_pinjam'  => $this->request->getPost('petugas_pinjam'),
             'petugas_kembali' => $this->request->getPost('petugas_kembali'),
             'keperluan'       => $this->request->getPost('keperluan'),
             'tgl_kembali'     => $this->convertDate($this->request->getPost('tgl_kembali')),
-            'status'          => $this->request->getPost('status'),
-        ]);
+        ];
 
-        return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil diperbarui!');
+        $this->peminjamanModel->update($id, $data);
+        return redirect()->to('/peminjaman')->with('success', 'Data berhasil diperbarui.');
     }
 
     public function delete($id)
     {
         $this->peminjamanModel->delete($id);
-        return redirect()->to(site_url('peminjaman'))->with('message', 'Data berhasil dihapus!');
+        return redirect()->to('/peminjaman')->with('success', 'Data berhasil dihapus.');
     }
 
     public function kembalikan($id)
     {
         $row = $this->peminjamanModel->find($id);
         if (!$row) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data dengan ID $id tidak ditemukan");
+            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data tidak ditemukan");
         }
 
         if (in_array($row['status'], ['Dipinjam', 'Terlambat'])) {
@@ -123,118 +105,17 @@ class Peminjaman extends Controller
                 'status'      => 'Dikembalikan',
                 'tgl_kembali' => date('Y-m-d'),
             ]);
-            session()->setFlashdata('message', 'Status berhasil diubah menjadi Dikembalikan.');
-        } else {
-            session()->setFlashdata('message', 'Data sudah berstatus Dikembalikan.');
+
+            return redirect()->to('/peminjaman')->with('success', 'Laptop berhasil dikembalikan.');
         }
 
-        return redirect()->to(site_url('peminjaman'));
+        return redirect()->to('/peminjaman')->with('info', 'Laptop sudah berstatus Dikembalikan.');
     }
 
     private function convertDate($date)
     {
         if (!$date) return null;
-        $parts = explode('/', $date);
-        if (count($parts) == 3) {
-            return $parts[2] . '-' . $parts[1] . '-' . $parts[0]; // Y-m-d
-        }
-        return $date;
-    }
-
-    public function riwayat()
-    {
-        $data['riwayat'] = $this->peminjamanModel
-            ->orderBy('tgl_pinjam', 'DESC')
-            ->findAll();
-
-        return view('riwayat/index', $data);
-    }
-
-    public function exportExcel()
-    {
-        $peminjaman = $this->peminjamanModel->orderBy('tgl_pinjam', 'DESC')->findAll();
-
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Riwayat Peminjaman');
-
-        $headers = ['ID', 'Nama Peminjam', 'Merk Laptop', 'Tanggal Pinjam', 'Tanggal Kembali', 'Petugas Pinjam', 'Petugas Kembali', 'Keperluan', 'Status'];
-        $col = 'A';
-        foreach ($headers as $header) {
-            $sheet->setCellValue($col . '1', $header);
-            $sheet->getStyle($col . '1')->getFont()->setBold(true);
-            $col++;
-        }
-
-        $rowNumber = 2;
-        foreach ($peminjaman as $row) {
-            $sheet->setCellValue('A' . $rowNumber, $row['id']);
-            $sheet->setCellValue('B' . $rowNumber, $row['nama_peminjam']);
-            $sheet->setCellValue('C' . $rowNumber, $row['merk_laptop']);
-            $sheet->setCellValue('D' . $rowNumber, !empty($row['tgl_pinjam']) ? date('d/m/Y', strtotime($row['tgl_pinjam'])) : '');
-            $sheet->setCellValue('E' . $rowNumber, !empty($row['tgl_kembali']) ? date('d/m/Y', strtotime($row['tgl_kembali'])) : '');
-            $sheet->setCellValue('F' . $rowNumber, $row['petugas_pinjam']);
-            $sheet->setCellValue('G' . $rowNumber, $row['petugas_kembali']);
-            $sheet->setCellValue('H' . $rowNumber, $row['keperluan']);
-            $sheet->setCellValue('I' . $rowNumber, $row['status']);
-            $rowNumber++;
-        }
-
-        foreach (range('A', 'I') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-
-        $fileName = 'riwayat_peminjaman.xlsx';
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment; filename="' . $fileName . '"');
-        header('Cache-Control: max-age=0');
-
-        $writer = new Xlsx($spreadsheet);
-        $writer->save('php://output');
-        exit();
-    }
-
-    public function search()
-    {
-        $keyword = $this->request->getGet('keyword');
-
-        if ($keyword) {
-            $items = $this->peminjamanModel
-                ->like('nama_peminjam', $keyword)
-                ->orLike('merk_laptop', $keyword)
-                ->findAll();
-        } else {
-            $items = $this->peminjamanModel->findAll();
-        }
-
-        return view('peminjaman/index', [
-            'items' => $items,
-            'keyword' => $keyword
-        ]);
-    }
-
-    public function cetak($id)
-    {
-        $peminjaman = $this->peminjamanModel->find($id);
-
-        if (!$peminjaman) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException("Data tidak ditemukan");
-        }
-
-        $path = FCPATH . 'img/logo.png';
-        $logo = 'data:image/png;base64,' . base64_encode(file_get_contents($path));
-
-        $data = [
-            'peminjaman' => $peminjaman,
-            'logo'       => $logo
-        ];
-
-        $html = view('peminjaman/show_pdf', $data);
-
-        $dompdf = new Dompdf();
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-        $dompdf->stream("Detail_Peminjaman.pdf", ["Attachment" => false]);
+        $dt = \DateTime::createFromFormat('d/m/Y', $date);
+        return $dt ? $dt->format('Y-m-d') : null;
     }
 }

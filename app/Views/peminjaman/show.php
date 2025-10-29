@@ -37,6 +37,7 @@
     .nota-table {
         width: 100%;
         border-collapse: collapse;
+        margin-bottom: 20px;
     }
 
     .nota-table th,
@@ -55,6 +56,27 @@
         color: #111827;
         background: #f9fafb;
         border-bottom: 1px solid #e5e7eb;
+    }
+
+    .keperluan-box {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+    }
+
+    .keperluan-box h4 {
+        margin: 0 0 10px 0;
+        color: #374151;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .keperluan-box p {
+        margin: 0;
+        color: #111827;
+        font-size: 15px;
     }
 
     .nota-footer {
@@ -105,7 +127,6 @@
 
 <div class="nota-container">
     <div class="nota-header">
-
         <h2>Detail Peminjaman Laptop</h2>
         <img src="<?= base_url('img/logo.png') ?>" alt="Logo" style="width:30px; height:30px; margin-right:10px; border-radius:6px;">
         <small>Badan Pusat Statistik Kabupaten Malang</small>
@@ -140,11 +161,12 @@
             <th>Petugas Kembali</th>
             <td><?= isset($peminjaman['petugas_kembali']) ? esc($peminjaman['petugas_kembali']) : '-' ?></td>
         </tr>
-        <tr>
-            <th>Keperluan</th>
-            <td><?= isset($peminjaman['keperluan']) ? esc($peminjaman['keperluan']) : '-' ?></td>
-        </tr>
     </table>
+
+    <div class="keperluan-box">
+        <h4>Keperluan Peminjaman</h4>
+        <p><?= isset($peminjaman['keperluan']) ? esc($peminjaman['keperluan']) : '-' ?></p>
+    </div>
 
     <div class="nota-footer">
         <p>Terima kasih telah menggunakan layanan pinjamin.</p>
@@ -158,7 +180,6 @@
             class="btn btn-danger" target="_blank">
             <i class="fas fa-file-pdf"></i> Download PDF
         </a>
-
     </div>
 </div>
 
